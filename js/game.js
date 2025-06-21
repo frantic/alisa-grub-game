@@ -36,7 +36,6 @@ let gameState = {
 // Hero variables
 let hero;
 let cursors;
-let debugText;
 let scoreText;
 let coins = [];
 let walls = [];
@@ -110,27 +109,8 @@ function create() {
     this.input.keyboard.enabled = true;
   });
 
-  // Add text to show the game is working
-  this.add.text(400, 30, 'Grub Game - Navigate the Maze & Collect All 4 Coins!', {
-    fontSize: '20px',
-    fill: '#ffffff',
-    align: 'center'
-  }).setOrigin(0.5).setDepth(20); // Put UI above bushes
-
-  // Add some basic instructions
-  this.add.text(400, 570, 'Arrow Keys: Move Hero | Click to focus game', {
-    fontSize: '14px',
-    fill: '#ffffff',
-    align: 'center'
-  }).setOrigin(0.5).setDepth(20); // Put UI above bushes
 
   // Add debug text
-  debugText = this.add.text(10, 10, 'Debug: Waiting for input...', {
-    fontSize: '14px',
-    fill: '#ffffff'
-  }).setDepth(20); // Put UI above bushes
-
-  // Add score text in top right corner
   scoreText = this.add.text(750, 10, `Level ${gameState.level} | Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`, {
     fontSize: '18px',
     fill: '#ffffff',
@@ -472,12 +452,10 @@ function update() {
     const gridX = Math.floor(hero.x / TILE_SIZE);
     const gridY = Math.floor(hero.y / TILE_SIZE);
     const isInWall = gridX >= 0 && gridX < MAZE_WIDTH && gridY >= 0 && gridY < MAZE_HEIGHT ? maze[gridY][gridX] === 1 : false;
-    debugText.setText(`Debug: Moving ${direction.trim()} - Hero at (${Math.round(hero.x)}, ${Math.round(hero.y)}) - Grid: (${gridX}, ${gridY}) - In Wall: ${isInWall}`);
   } else {
     const gridX = Math.floor(hero.x / TILE_SIZE);
     const gridY = Math.floor(hero.y / TILE_SIZE);
     const isInWall = gridX >= 0 && gridX < MAZE_WIDTH && gridY >= 0 && gridY < MAZE_HEIGHT ? maze[gridY][gridX] === 1 : false;
-    debugText.setText(`Debug: Idle - Hero at (${Math.round(hero.x)}, ${Math.round(hero.y)}) - Grid: (${gridX}, ${gridY}) - In Wall: ${isInWall} - No keys pressed`);
   }
 }
 
