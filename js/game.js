@@ -327,8 +327,19 @@ function createCoins() {
 
 // Function to handle coin collection
 function collectCoin(hero, coin) {
-  // Remove the coin from the scene
-  coin.destroy();
+  // Create glowing effect before destroying the coin
+  this.tweens.add({
+    targets: coin,
+    scaleX: 1.5,
+    scaleY: 1.5,
+    alpha: 0,
+    duration: 500,
+    ease: 'Power2',
+    onComplete: () => {
+      // Remove the coin from the scene
+      coin.destroy();
+    }
+  });
 
   // Remove from coins array
   const index = coins.indexOf(coin);
