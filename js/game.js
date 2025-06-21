@@ -4,7 +4,7 @@ const config = {
   width: 800,
   height: 600,
   parent: 'game-container',
-  backgroundColor: '#ffff00', // Yellow background
+  backgroundColor: '#228B22', // Green background
   scene: {
     preload: preload,
     create: create,
@@ -38,37 +38,64 @@ let cursors;
 let debugText;
 let scoreText;
 let coins = [];
+let walls = [];
+let maze = [];
+
+// Maze configuration
+const MAZE_WIDTH = 20;
+const MAZE_HEIGHT = 15;
+const TILE_SIZE = 40;
 
 // Preload assets
 function preload() {
   // Load any assets here (sprites, sounds, etc.)
-  console.log('Preloading assets...');
 
   // Load the hero sprite
   this.load.image('hero', 'assets/images/sprites/hero.png');
 
   // Load the coin sprite
   this.load.image('coin', 'assets/images/sprites/coin.png');
+
+  // Load maze sprites
+  this.load.image('bush1', 'assets/images/sprites/bush1.png');
+  this.load.image('bush2', 'assets/images/sprites/bush2.png');
+  this.load.image('grass1', 'assets/images/sprites/grass1.png');
+  this.load.image('grass2', 'assets/images/sprites/grass2.png');
 }
 
 // Create game objects
 function create() {
-  console.log('Creating game scene...');
+  // Generate the maze
+  generateMaze();
 
-  // Create the hero sprite at the center of the screen
-  hero = this.add.sprite(400, 300, 'hero');
+  // Create the maze tiles
+  createMazeTiles.call(this);
+
+  // Create the hero sprite at a valid starting position
+  const startPos = findValidStartPosition();
+  hero = this.add.sprite(startPos.x, startPos.y, 'hero');
 
   // Enable physics on the hero
   this.physics.add.existing(hero);
 
   // Set hero properties
-  hero.setScale(0.09765625); // Scale to make hero ~100x100 pixels (100/1024)
+  hero.setScale(0.0390625); // Scale to make hero ~40x40 pixels (40/1024) to match tile size
+  hero.setDepth(5); // Put hero above grass but below bushes
   hero.body.setCollideWorldBounds(true); // Keep hero within game bounds
 
-  // Create coins at random locations
+  // Adjust hero physics body size to be smaller than the sprite
+  hero.body.setSize(35, 35); // Slightly smaller than tile size for easier movement
+  hero.body.setOffset(-17.5, -17.5); // Center the collision box properly
+
+  // Re-enable wall collisions with better setup
+  this.physics.add.collider(hero, walls, function (hero, wall) {
+    // Collision detected
+  }, null, this); // Hero collides with walls
+
+  // Create coins at random accessible locations
   createCoins.call(this);
 
-  // Set up collision detection between hero and coins
+  // Set up collision detection
   this.physics.add.overlap(hero, coins, collectCoin, null, this);
 
   // Set up cursor keys for input
@@ -80,58 +107,221 @@ function create() {
   // Add click to focus functionality
   this.input.on('pointerdown', () => {
     this.input.keyboard.enabled = true;
-    console.log('Game focused - keyboard input enabled');
   });
 
   // Add text to show the game is working
-  this.add.text(400, 50, 'Grub Game - Collect All 4 Coins!', {
-    fontSize: '24px',
-    fill: '#000000',
+  this.add.text(400, 30, 'Grub Game - Navigate the Maze & Collect All 4 Coins!', {
+    fontSize: '20px',
+    fill: '#ffffff',
     align: 'center'
-  }).setOrigin(0.5);
+  }).setOrigin(0.5).setDepth(20); // Put UI above bushes
 
   // Add some basic instructions
-  this.add.text(400, 550, 'Arrow Keys: Move Hero | Click to focus game', {
-    fontSize: '16px',
-    fill: '#000000',
+  this.add.text(400, 570, 'Arrow Keys: Move Hero | Click to focus game', {
+    fontSize: '14px',
+    fill: '#ffffff',
     align: 'center'
-  }).setOrigin(0.5);
+  }).setOrigin(0.5).setDepth(20); // Put UI above bushes
 
   // Add debug text
   debugText = this.add.text(10, 10, 'Debug: Waiting for input...', {
     fontSize: '14px',
-    fill: '#000000'
-  });
+    fill: '#ffffff'
+  }).setDepth(20); // Put UI above bushes
 
   // Add score text in top right corner
   scoreText = this.add.text(750, 10, `Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`, {
     fontSize: '18px',
-    fill: '#000000',
+    fill: '#ffffff',
     align: 'right'
-  }).setOrigin(1, 0);
+  }).setOrigin(1, 0).setDepth(20); // Put UI above bushes
+
+  // Debug: Visualize the actual maze structure
+  visualizeMaze.call(this);
+
+  // Debug: Show collision bodies (commented out due to error)
+  // this.physics.world.drawDebug = true;
 }
 
-// Function to create coins at random locations
-function createCoins() {
-  const coinScale = 0.1; // Adjust scale for coins
-  const margin = 50; // Keep coins away from edges
+// Generate maze using recursive backtracking
+function generateMaze() {
+  // Initialize maze with walls
+  for (let y = 0; y < MAZE_HEIGHT; y++) {
+    maze[y] = [];
+    for (let x = 0; x < MAZE_WIDTH; x++) {
+      maze[y][x] = 1; // 1 = wall, 0 = path
+    }
+  }
 
-  for (let i = 0; i < gameState.totalCoins; i++) {
-    // Generate random position within game bounds
-    const x = margin + Math.random() * (800 - 2 * margin);
-    const y = margin + Math.random() * (600 - 2 * margin);
+  // Start from (1,1) and carve paths
+  carvePath(1, 1);
+
+  // Ensure start and end areas are accessible
+  maze[1][1] = 0; // Start position
+  maze[MAZE_HEIGHT - 2][MAZE_WIDTH - 2] = 0; // End position
+}
+
+// Recursive backtracking maze generation
+function carvePath(x, y) {
+  maze[y][x] = 0; // Mark current cell as path
+
+  // Define directions: [dx, dy]
+  const directions = [
+    [0, -2], // North
+    [2, 0],  // East
+    [0, 2],  // South
+    [-2, 0]  // West
+  ];
+
+  // Shuffle directions
+  for (let i = directions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [directions[i], directions[j]] = [directions[j], directions[i]];
+  }
+
+  // Try each direction
+  for (let [dx, dy] of directions) {
+    const newX = x + dx;
+    const newY = y + dy;
+
+    // Check if new position is within bounds and is a wall
+    if (newX > 0 && newX < MAZE_WIDTH - 1 && newY > 0 && newY < MAZE_HEIGHT - 1 && maze[newY][newX] === 1) {
+      // Carve path to new cell
+      maze[y + dy / 2][x + dx / 2] = 0; // Remove wall between cells
+      carvePath(newX, newY);
+    }
+  }
+}
+
+// Create maze tiles from the generated maze
+function createMazeTiles() {
+  for (let y = 0; y < MAZE_HEIGHT; y++) {
+    for (let x = 0; x < MAZE_WIDTH; x++) {
+      const worldX = x * TILE_SIZE + TILE_SIZE / 2;
+      const worldY = y * TILE_SIZE + TILE_SIZE / 2;
+
+      if (maze[y][x] === 1) {
+        // Create wall
+        const wallSprite = Math.random() < 0.5 ? 'bush1' : 'bush2';
+        const wall = this.add.sprite(worldX, worldY, wallSprite);
+        wall.setScale(0.04); // Scale down from 1024x1024 to ~40x40 pixels
+        wall.setDepth(10); // Put bushes on top of hero
+
+        // Enable physics on wall with perfectly centered collision box
+        this.physics.add.existing(wall, true); // true = static body
+        wall.body.setSize(40, 40); // Match tile size exactly
+        wall.body.setOffset(-20, -20); // Center the collision box properly
+        walls.push(wall);
+      } else {
+        // Create grass floor
+        const grassSprite = Math.random() < 0.5 ? 'grass1' : 'grass2';
+        const grass = this.add.sprite(worldX, worldY, grassSprite);
+        grass.setScale(0.04); // Scale down from 1024x1024 to ~40x40 pixels
+        grass.setDepth(-1); // Put grass behind other sprites
+      }
+    }
+  }
+}
+
+// Debug function to visualize the actual maze structure
+function visualizeMaze() {
+  // Visual overlay on screen (only showing paths, not walls)
+  for (let y = 0; y < MAZE_HEIGHT; y++) {
+    for (let x = 0; x < MAZE_WIDTH; x++) {
+      const worldX = x * TILE_SIZE + TILE_SIZE / 2;
+      const worldY = y * TILE_SIZE + TILE_SIZE / 2;
+
+      if (maze[y][x] === 0) {
+        // Path - green rectangle (keep this to show walkable areas)
+        this.add.rectangle(worldX, worldY, TILE_SIZE - 2, TILE_SIZE - 2, 0x00ff00, 0.2);
+      }
+      // Removed red rectangles for walls to clean up the visual
+    }
+  }
+}
+
+// Find a valid starting position for the hero
+function findValidStartPosition() {
+  // Look for an open area with more space around it
+  for (let y = 2; y < MAZE_HEIGHT - 2; y++) {
+    for (let x = 2; x < MAZE_WIDTH - 2; x++) {
+      if (maze[y][x] === 0) {
+        // Check if there's enough space around this position
+        let hasSpace = true;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (maze[y + dy][x + dx] === 1) {
+              hasSpace = false;
+              break;
+            }
+          }
+          if (!hasSpace) break;
+        }
+
+        if (hasSpace) {
+          return {
+            x: x * TILE_SIZE + TILE_SIZE / 2,
+            y: y * TILE_SIZE + TILE_SIZE / 2
+          };
+        }
+      }
+    }
+  }
+
+  // Fallback: find any open position
+  for (let y = 1; y < MAZE_HEIGHT - 1; y++) {
+    for (let x = 1; x < MAZE_WIDTH - 1; x++) {
+      if (maze[y][x] === 0) {
+        return {
+          x: x * TILE_SIZE + TILE_SIZE / 2,
+          y: y * TILE_SIZE + TILE_SIZE / 2
+        };
+      }
+    }
+  }
+
+  // Last resort: center of screen
+  return { x: 400, y: 300 };
+}
+
+// Function to create coins at random accessible locations
+function createCoins() {
+  const coinScale = 0.0390625; // Scale to make coins ~40x40 pixels (40/1024) to match tile size
+  const accessiblePositions = [];
+
+  // Find all accessible positions
+  for (let y = 0; y < MAZE_HEIGHT; y++) {
+    for (let x = 0; x < MAZE_WIDTH; x++) {
+      if (maze[y][x] === 0) {
+        accessiblePositions.push({
+          x: x * TILE_SIZE + TILE_SIZE / 2,
+          y: y * TILE_SIZE + TILE_SIZE / 2
+        });
+      }
+    }
+  }
+
+  // Shuffle accessible positions
+  for (let i = accessiblePositions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [accessiblePositions[i], accessiblePositions[j]] = [accessiblePositions[j], accessiblePositions[i]];
+  }
+
+  // Create coins at first 4 accessible positions
+  for (let i = 0; i < Math.min(gameState.totalCoins, accessiblePositions.length); i++) {
+    const pos = accessiblePositions[i];
 
     // Create coin sprite
-    const coin = this.add.sprite(x, y, 'coin');
+    const coin = this.add.sprite(pos.x, pos.y, 'coin');
     coin.setScale(coinScale);
+    coin.setDepth(5); // Same depth as hero
+    coin.setAlpha(1); // Ensure coins are fully opaque
 
     // Enable physics on coin
     this.physics.add.existing(coin);
 
     // Add to coins array
     coins.push(coin);
-
-    console.log(`Coin ${i + 1} created at (${Math.round(x)}, ${Math.round(y)})`);
   }
 }
 
@@ -153,18 +343,14 @@ function collectCoin(hero, coin) {
   // Update score display
   scoreText.setText(`Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`);
 
-  console.log(`Coin collected! Score: ${gameState.score}, Coins: ${gameState.coinsCollected}/${gameState.totalCoins}`);
-
   // Check if all coins are collected
   if (gameState.coinsCollected >= gameState.totalCoins) {
     // Game won!
     this.add.text(400, 250, '🎉 YOU WIN! 🎉\nAll coins collected!', {
       fontSize: '32px',
-      fill: '#000000',
+      fill: '#ffffff',
       align: 'center'
-    }).setOrigin(0.5);
-
-    console.log('Game completed! All coins collected!');
+    }).setOrigin(0.5).setDepth(20); // Put UI above bushes
   }
 }
 
@@ -206,11 +392,17 @@ function update() {
     hero.body.velocity.normalize().scale(speed);
   }
 
-  // Update debug text
+  // Update debug text with more information
   if (isMoving) {
-    debugText.setText(`Debug: Moving ${direction.trim()} - Hero at (${Math.round(hero.x)}, ${Math.round(hero.y)})`);
+    const gridX = Math.floor(hero.x / TILE_SIZE);
+    const gridY = Math.floor(hero.y / TILE_SIZE);
+    const isInWall = gridX >= 0 && gridX < MAZE_WIDTH && gridY >= 0 && gridY < MAZE_HEIGHT ? maze[gridY][gridX] === 1 : false;
+    debugText.setText(`Debug: Moving ${direction.trim()} - Hero at (${Math.round(hero.x)}, ${Math.round(hero.y)}) - Grid: (${gridX}, ${gridY}) - In Wall: ${isInWall}`);
   } else {
-    debugText.setText(`Debug: Idle - Hero at (${Math.round(hero.x)}, ${Math.round(hero.y)})`);
+    const gridX = Math.floor(hero.x / TILE_SIZE);
+    const gridY = Math.floor(hero.y / TILE_SIZE);
+    const isInWall = gridX >= 0 && gridX < MAZE_WIDTH && gridY >= 0 && gridY < MAZE_HEIGHT ? maze[gridY][gridX] === 1 : false;
+    debugText.setText(`Debug: Idle - Hero at (${Math.round(hero.x)}, ${Math.round(hero.y)}) - Grid: (${gridX}, ${gridY}) - In Wall: ${isInWall} - No keys pressed`);
   }
 }
 
