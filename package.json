@@ -1,0 +1,23 @@
+{
+  "name": "grub-game",
+  "version": "1.0.0",
+  "description": "A game built with Phaser.js",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -p 8000 -c-1",
+    "dev": "http-server -p 8000 -c-1"
+  },
+  "dependencies": {
+    "phaser": "^3.70.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "keywords": [
+    "game",
+    "phaser",
+    "html5"
+  ],
+  "author": "",
+  "license": "MIT"
+}
