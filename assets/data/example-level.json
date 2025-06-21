@@ -1,0 +1,41 @@
+{
+  "level": 1,
+  "name": "Grub World",
+  "background": "level1-bg",
+  "music": "level1-music",
+  "player": {
+    "startX": 100,
+    "startY": 500,
+    "sprite": "player"
+  },
+  "enemies": [
+    {
+      "type": "grub",
+      "x": 300,
+      "y": 500,
+      "sprite": "grub-enemy"
+    },
+    {
+      "type": "grub",
+      "x": 500,
+      "y": 500,
+      "sprite": "grub-enemy"
+    }
+  ],
+  "collectibles": [
+    {
+      "type": "food",
+      "x": 200,
+      "y": 400,
+      "sprite": "food-item"
+    }
+  ],
+  "platforms": [
+    {
+      "x": 0,
+      "y": 550,
+      "width": 800,
+      "height": 50
+    }
+  ]
+}
