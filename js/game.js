@@ -29,7 +29,8 @@ const game = new Phaser.Game(config);
 let gameState = {
   score: 0,
   coinsCollected: 0,
-  totalCoins: 4
+  totalCoins: 4,
+  level: 1
 };
 
 // Hero variables
@@ -130,7 +131,7 @@ function create() {
   }).setDepth(20); // Put UI above bushes
 
   // Add score text in top right corner
-  scoreText = this.add.text(750, 10, `Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`, {
+  scoreText = this.add.text(750, 10, `Level ${gameState.level} | Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`, {
     fontSize: '18px',
     fill: '#ffffff',
     align: 'right'
@@ -352,17 +353,80 @@ function collectCoin(hero, coin) {
   gameState.score += 100;
 
   // Update score display
-  scoreText.setText(`Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`);
+  scoreText.setText(`Level ${gameState.level} | Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`);
 
   // Check if all coins are collected
   if (gameState.coinsCollected >= gameState.totalCoins) {
-    // Game won!
-    this.add.text(400, 250, '🎉 YOU WIN! 🎉\nAll coins collected!', {
-      fontSize: '32px',
-      fill: '#ffffff',
-      align: 'center'
-    }).setOrigin(0.5).setDepth(20); // Put UI above bushes
+    // Start new level
+    startNewLevel.call(this);
   }
+}
+
+// Function to start a new level
+function startNewLevel() {
+  // Animate hero jumping for happiness
+  this.tweens.add({
+    targets: hero,
+    y: hero.y - 50,
+    duration: 200,
+    ease: 'Power2',
+    yoyo: true,
+    repeat: 1,
+    onComplete: () => {
+      // After animation, start new level
+      generateNewLevel.call(this);
+    }
+  });
+}
+
+// Function to generate a new level
+function generateNewLevel() {
+  // Clear existing maze and coins
+  walls.forEach(wall => wall.destroy());
+  walls = [];
+  coins.forEach(coin => coin.destroy());
+  coins = [];
+
+  // Increase level and coin count
+  gameState.level++;
+  gameState.totalCoins++;
+  gameState.coinsCollected = 0;
+
+  // Generate new maze
+  generateMaze();
+
+  // Create new maze tiles
+  createMazeTiles.call(this);
+
+  // Set up collision detection for new walls
+  this.physics.add.collider(hero, walls, function (hero, wall) {
+    // Collision detected
+  }, null, this);
+
+  // Reposition hero at new valid starting position
+  const startPos = findValidStartPosition();
+  hero.setPosition(startPos.x, startPos.y);
+
+  // Create new coins
+  createCoins.call(this);
+
+  // Set up collision detection for new coins
+  this.physics.add.overlap(hero, coins, collectCoin, null, this);
+
+  // Update score display
+  scoreText.setText(`Level ${gameState.level} | Score: ${gameState.score} (${gameState.coinsCollected}/${gameState.totalCoins})`);
+
+  // Show level transition message
+  const levelText = this.add.text(400, 250, `Level ${gameState.level}!`, {
+    fontSize: '32px',
+    fill: '#ffffff',
+    align: 'center'
+  }).setOrigin(0.5).setDepth(20);
+
+  // Remove level text after 2 seconds
+  this.time.delayedCall(2000, () => {
+    levelText.destroy();
+  });
 }
 
 // Update game logic (runs every frame)
