@@ -29,7 +29,7 @@ const game = new Phaser.Game(config);
 let gameState = {
   score: 0,
   coinsCollected: 0,
-  totalCoins: 1,
+  totalCoins: 4,
   level: 1
 };
 
