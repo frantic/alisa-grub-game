@@ -1,6 +1,6 @@
 # Grub Game
 
-A simple HTML5 game built with Phaser.js that displays a yellow screen.
+A simple HTML5 game built with Phaser.js that displays a yellow screen. Vibe coded by 8 year old.
 
 ## Features
 
