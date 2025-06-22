@@ -29,7 +29,7 @@ const game = new Phaser.Game(config);
 let gameState = {
   score: 0,
   coinsCollected: 0,
-  totalCoins: 4,
+  totalCoins: 1,
   level: 1
 };
 
@@ -361,14 +361,14 @@ function startNewLevel() {
   // Play victory sound
   this.sound.play('victory');
 
-  // Animate hero jumping for happiness
+  // Animate hero jumping for happiness (longer and more jumps)
   this.tweens.add({
     targets: hero,
     y: hero.y - 50,
-    duration: 200,
+    duration: 400, // longer jump duration
     ease: 'Power2',
     yoyo: true,
-    repeat: 1,
+    repeat: 5, // more jumps
     onComplete: () => {
       // After animation, start new level
       generateNewLevel.call(this);
