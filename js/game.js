@@ -491,9 +491,9 @@ function update() {
     const currentTime = this.time.now;
     if (!isWalking && currentTime - lastStepTime > stepCooldown) {
       if (nearBush) {
-        this.sound.play('bushes');
+        this.sound.play('bushes', { volume: 4.0 });
       } else {
-        this.sound.play('steps');
+        this.sound.play('steps', { volume: 4.0 });
       }
       lastStepTime = currentTime;
     }
