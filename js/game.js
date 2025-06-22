@@ -41,6 +41,11 @@ let coins = [];
 let walls = [];
 let maze = [];
 
+// Walking sound variables
+let isWalking = false;
+let lastStepTime = 0;
+let stepCooldown = 2000; // milliseconds between step sounds
+
 // Maze configuration
 const MAZE_WIDTH = 20;
 const MAZE_HEIGHT = 15;
@@ -65,6 +70,8 @@ function preload() {
   // Load audio
   this.load.audio('coin-collected', 'assets/audio/sfx/coin-collected.mp3');
   this.load.audio('victory', 'assets/audio/sfx/victory.mp3');
+  this.load.audio('steps', 'assets/audio/sfx/steps.mp3');
+  this.load.audio('bushes', 'assets/audio/sfx/bushes.mp3');
 }
 
 // Create game objects
@@ -462,10 +469,37 @@ function update() {
     const gridX = Math.floor(hero.x / TILE_SIZE);
     const gridY = Math.floor(hero.y / TILE_SIZE);
     const isInWall = gridX >= 0 && gridX < MAZE_WIDTH && gridY >= 0 && gridY < MAZE_HEIGHT ? maze[gridY][gridX] === 1 : false;
+
+    // Check if hero is adjacent to a bush
+    let nearBush = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = gridX + dx;
+        const ny = gridY + dy;
+        if (nx >= 0 && nx < MAZE_WIDTH / 2 && ny >= 0 && ny < MAZE_HEIGHT / 2) {
+          if (maze[ny][nx] === 1) {
+            nearBush = true;
+            break;
+          }
+        }
+      }
+      if (nearBush) break;
+    }
+
+    // Handle walking sounds
+    const currentTime = this.time.now;
+    if (!isWalking && currentTime - lastStepTime > stepCooldown) {
+      if (nearBush) {
+        this.sound.play('bushes');
+      } else {
+        this.sound.play('steps');
+      }
+      lastStepTime = currentTime;
+    }
+    isWalking = true;
   } else {
-    const gridX = Math.floor(hero.x / TILE_SIZE);
-    const gridY = Math.floor(hero.y / TILE_SIZE);
-    const isInWall = gridX >= 0 && gridX < MAZE_WIDTH && gridY >= 0 && gridY < MAZE_HEIGHT ? maze[gridY][gridX] === 1 : false;
+    isWalking = false;
   }
 }
 
