@@ -61,6 +61,10 @@ function preload() {
   this.load.image('bush2', 'assets/images/sprites/bush2.png');
   this.load.image('grass1', 'assets/images/sprites/grass1.png');
   this.load.image('grass2', 'assets/images/sprites/grass2.png');
+
+  // Load audio
+  this.load.audio('coin-collected', 'assets/audio/sfx/coin-collected.mp3');
+  this.load.audio('victory', 'assets/audio/sfx/victory.mp3');
 }
 
 // Create game objects
@@ -308,6 +312,9 @@ function createCoins() {
 
 // Function to handle coin collection
 function collectCoin(hero, coin) {
+  // Play coin collection sound
+  this.sound.play('coin-collected');
+
   // Create glowing effect before destroying the coin
   this.tweens.add({
     targets: coin,
@@ -344,6 +351,9 @@ function collectCoin(hero, coin) {
 
 // Function to start a new level
 function startNewLevel() {
+  // Play victory sound
+  this.sound.play('victory');
+
   // Animate hero jumping for happiness
   this.tweens.add({
     targets: hero,
